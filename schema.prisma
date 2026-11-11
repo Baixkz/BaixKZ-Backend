@@ -1,0 +1,102 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum StoreStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  REJECTED
+}
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  HIDDEN
+  REJECTED
+}
+
+enum AdminRole {
+  SUPER_ADMIN
+  ADMIN
+  MODERATOR
+  SUPPORT
+}
+
+model User {
+  id          String      @id @default(cuid())
+  firebaseUid String      @unique
+  email       String?
+  displayName String?
+  photoUrl    String?
+  blocked     Boolean     @default(false)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  stores      Store[]
+  adminRole   AdminUser?
+}
+
+model Store {
+  id          String       @id @default(cuid())
+  ownerId     String
+  owner       User         @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  name        String
+  description String       @default("")
+  phone       String
+  whatsapp    String
+  village     String
+  address     String      @default("")
+  logoUrl     String?
+  status      StoreStatus  @default(PENDING)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  products    Product[]
+  @@index([village, status])
+  @@index([ownerId])
+}
+
+model Product {
+  id          String        @id @default(cuid())
+  storeId     String
+  store       Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  name        String
+  description String        @default("")
+  price       Decimal       @db.Decimal(14, 2)
+  currency    String        @default("KZT")
+  imageUrl    String?
+  category    String        @default("Басқа")
+  status      ProductStatus @default(ACTIVE)
+  stock       Int?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  @@index([storeId, status])
+  @@index([category, status])
+}
+
+model AdminUser {
+  id          String    @id @default(cuid())
+  userId      String    @unique
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role        AdminRole
+  permissions String[]  @default([])
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model AdminAuditLog {
+  id          String   @id @default(cuid())
+  actorUid    String
+  action      String
+  targetType  String
+  targetId    String?
+  details     Json?
+  createdAt   DateTime @default(now())
+  @@index([createdAt])
+  @@index([actorUid])
+}
